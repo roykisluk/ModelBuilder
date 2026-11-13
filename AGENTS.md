@@ -38,3 +38,7 @@ Newest at the bottom. Each entry: symptom → root cause → fix.
   sketch's own macros go in `model/ref.macros`.
 - 2026-11-13. The published page carries the host's document skeleton (a doctype line first, `</body></html>` last),
   as the live page did. A full document is published as it is, not wrapped again.
+- 2026-11-13. Symptom: a headless browser check of the page showed the "open this page inside Claude" banner on a
+  reload, though a stub `window.claude` was installed. Root cause: chrome-devtools `navigate_page` applies its
+  `initScript` to the next navigation only. Fix: pass the stub on every navigation, and assert `!!window.claude`
+  before reading any result.
