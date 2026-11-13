@@ -49,6 +49,8 @@ const links = (p, s) => [...s.matchAll(p.linkRe())].map((m) => m[0]);
   const q = load({ macros: { mm: { tex: "<b>#1</b>", class: 'x" onload="' } } });
   const out = q.textMacros(q.esc("\\mm{x}"));
   assert(!out.includes("onload") && !out.includes("<b>"), "macro output must not carry markup: " + out);
+  const r = load({ macros: { foc: { tex: "the firm's FOC for #1" } } });
+  assert.strictEqual(r.textMacros(r.esc("\\foc{capital}")), "the firm&#39;s FOC for capital", "an apostrophe's &#39; is not an argument");
 }
 // 5. The reader link takes only a claude.ai page
 {

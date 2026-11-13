@@ -410,7 +410,7 @@ function dataMacros(s) { // the sketch's own macros, from model/ref.macros: { na
       const args = [a];
       for (let i = 1; i < n; i++) { const b = braceArg(full, end); if (!b) return a; args.push(b.arg); end = b.end; }
       if (n > 1) fn.consumed = end;
-      const out = esc(m.tex).replace(/#([1-9])/g, (_, k) => args[k - 1] ?? "");
+      const out = m.tex.split(/(#[1-9])/).map((p, i) => (i % 2 ? args[p[1] - 1] ?? "" : esc(p))).join("");
       return /^[a-z-]+$/.test(m.class || "") ? `<span class="${m.class}">${out}</span>` : out;
     };
     s = macro1(s, name, fn);

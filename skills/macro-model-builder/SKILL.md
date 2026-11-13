@@ -241,11 +241,14 @@ publish `assets/model-builder.html` with capabilities
 upload the source draft's PDF as an asset, then seed with one `ArtifactData`
 batch: `model/ref` {`title`, `short` (tab label, and the name draft equations
 are cited by, as in `(D.13)`), `brief` (what is being built and how to cite the
-source), `order` (build order), `text` (the source draft's equations
-transcribed into LaTeX, numbered as in the draft: extracted PDF text garbles
-math), `pdfAssetId`}; `model/sketch` {`tex`, `updatedAt`, `syncedAt`};
-`model/progress` {`md`}; and one opening tutor message in `chat`. Notes for the
-tutor only go in `text` as lines starting "Tutor note".
+source), `order` (build order: one string, blocks joined by ` → `), `text` (the
+source draft's equations transcribed into LaTeX, numbered as in the draft:
+extracted PDF text garbles math), `pdfAssetId` (the bare asset id from the
+upload, not its URL)}; `model/sketch` {`tex`, `updatedAt`, `syncedAt`, both
+times in epoch milliseconds}; `model/progress` {`md`}; and one opening tutor
+message, `chat/<id>` = {`role`: "assistant", `content`, `t` (epoch
+milliseconds)}. Notes for the tutor only go in `text` as lines starting
+"Tutor note".
 Optional `model/ref` fields: `learner` (the name the tutor uses, from the
 profile; default "the learner"), `reader` (the address of the user's own
 Margin Questions page, which the page links to), `macros` (the sketch's own
