@@ -1,0 +1,5 @@
+# Build with latexmk: PDF output, and BibTeX run when a .bib is found.
+# If your .bib lives outside the project, point BibTeX at its folder (keep the trailing colon):
+# $ENV{'BIBINPUTS'} = '/path/to/your/bib/folder:';
+$pdf_mode = 1;
+$bibtex_use = 2;

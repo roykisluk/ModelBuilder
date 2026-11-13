@@ -1,0 +1,12 @@
+{
+  "name": "model-builder",
+  "owner": { "name": "ModelBuilder contributors" },
+  "description": "Build an economic model with a tutor, as a LaTeX sketch",
+  "plugins": [
+    {
+      "name": "model-builder",
+      "source": "./",
+      "description": "A skill that tutors you through building a macroeconomic model, with a companion claude.ai page"
+    }
+  ]
+}

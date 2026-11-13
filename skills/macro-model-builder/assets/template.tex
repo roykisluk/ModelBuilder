@@ -1,0 +1,123 @@
+% Model sketch template — macro-model-builder skill
+% Macro working-paper defaults, trimmed for a sketch. Sections follow the
+% default block map (references/model-blocks.md); delete or merge sections
+% freely for small models, but keep: Purpose, Equilibrium, The experiment,
+% Open questions.
+\documentclass[12pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,mathtools,amsthm}
+\usepackage{booktabs}
+\usepackage{setspace}
+\usepackage[round]{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\onehalfspacing
+
+% ---- Theorem-style environments -------------------------------------------
+\newtheorem{assumption}{Assumption}
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+% Tag substantive modelling choices, never regularity conditions, as critical
+% (mechanism dies without it) or convenience (tractability only):  \begin{assumption}\atype{critical} ...
+\newcommand{\atype}[1]{\textnormal{[\textit{#1}]}\;}
+
+% Identifying moment for a parameter, used inline after introducing it:
+%   ... with Calvo parameter $\theta$.\moment{$\theta$}{micro price-change frequency}
+\newcommand{\moment}[2]{\footnote{Identifying moment for #1: #2.}}
+
+% ---- Metadata --------------------------------------------------------------
+\title{Model sketch: MODEL-NAME}
+\author{AUTHOR}
+\date{\today\ --- draft, not for circulation}
+
+\begin{document}
+\maketitle
+
+\section*{Purpose}
+% One paragraph, three sentences: the question, the mechanism the model must
+% generate, the experiment that will be run. Everything below is checked
+% against this paragraph.
+[Question.] [Mechanism.] [Experiment.]
+
+\paragraph{Base papers.} \citet{KEY1}; \citet{KEY2}.
+% One line each on what is taken from the paper (environment, a trick, a
+% calibration) — not a literature review.
+
+\section*{Notation}
+% Load-bearing (Thomson): mnemonic letters, no symbol doing double duty,
+% defined before use. Delete for small models.
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Symbol & Meaning \\
+\midrule
+$t$ & time, discrete, infinite horizon \\
+% ...
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Environment}
+% Time, demography, goods, technology at a glance, information, and the
+% within-period timeline (write it explicitly if there is any doubt).
+
+\section{Agents and preferences}
+
+\section{Technology and market structure}
+% Every price has a known origin: parametric, chosen by an optimizer, or a
+% protocol. Every income flow has a recipient.
+
+\section{Agents' problems}
+% Problems, FOCs with one-line economic readings, envelope/transversality
+% where relevant.
+
+\section{Aggregation and market clearing}
+% All clearing conditions; resource constraint derived, checked against the
+% income accounting. With heterogeneity: which statistics of the distribution
+% enter aggregates.
+
+\section{Equilibrium}
+\begin{definition}[Equilibrium]
+% The full list of objects and the conditions they jointly satisfy; what is
+% exogenous. Mentions everything introduced above and nothing else.
+\end{definition}
+
+\section{Steady state}
+% Stationary system; which equations pin which variables; the computation
+% strategy, down to the one-dimensional root-finding problem if there is one.
+
+\section{The experiment}
+% The shock (default: unanticipated at t=0, perfect foresight after), outcome
+% variables, and the expected mechanics in words — written before computing.
+
+\subsection*{Parameters and identifying moments}
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Parameter & Role & Identifying moment \\
+\midrule
+% $\beta$ & discounting & real interest rate in steady state \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Open questions / next steps}
+% Honest and specific: unresolved choices, checks not yet run (pre-flight
+% checklist in craft.md), what the quantitative version needs, what the
+% sketch demonstrates vs. merely suggests.
+\begin{itemize}
+  \item
+\end{itemize}
+
+% refs.bib beside this file, or wherever BIBINPUTS in latexmkrc points
+% (copy assets/latexmkrc beside this file; build with latexmk). AEA style.
+\bibliographystyle{aer}
+\bibliography{refs}
+
+\end{document}

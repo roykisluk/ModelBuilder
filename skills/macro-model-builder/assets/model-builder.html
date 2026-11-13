@@ -1,0 +1,1465 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Model Builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* Layout: the tutor chat on the left; the work on the right in tabs (sketch: outline | source | rendered page; the source draft's PDF; progress).
+   Companion to Margin Questions: same type and palette family, green-slate accent so the two are told apart. */
+:root {
+  --desk: #e3e7e6;
+  --panel: #f6f8f7;
+  --paper: #ffffff;
+  --ink: #1b2422;
+  --muted: #5a6865;
+  --line: #d0d8d6;
+  --accent: #1f6b5c;
+  --accent-soft: rgba(31, 107, 92, .10);
+  --you: #eef3f2;
+  --danger: #b3261e;
+  --ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --prose: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --desk: #111614; --panel: #171d1b; --paper: #1d2422; --ink: #e2e9e7; --muted: #95a5a1; --line: #2a3431;
+    --accent: #6fc2ad; --accent-soft: rgba(111, 194, 173, .15); --you: #212b28; --danger: #f07a72;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --desk: #111614; --panel: #171d1b; --paper: #1d2422; --ink: #e2e9e7; --muted: #95a5a1; --line: #2a3431;
+  --accent: #6fc2ad; --accent-soft: rgba(111, 194, 173, .15); --you: #212b28; --danger: #f07a72;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--desk); color: var(--ink); font: 14px/1.45 var(--ui); overflow: hidden; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
+/* fixed rows: when the banner is hidden, .main must still take the filling row, not slide into the banner's auto row */
+.app > header.bar { grid-row: 1; }
+.app > .banner { grid-row: 2; }
+.app > .main { grid-row: 3; }
+header.bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-block: 8px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.brand { font-weight: 600; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.brand .dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); }
+.bar .what { color: var(--muted); font-size: 13px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar .grow { flex: 1; }
+.stamp { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stamp.warn { color: var(--accent); }
+/* build progress: one segment per block of the build order; settled = full, draft = half */
+.pbar { display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent; background: transparent; padding: 3px 6px; border-radius: 6px; }
+.pbar:hover { border-color: var(--line); background: var(--paper); }
+.psegs { display: inline-flex; gap: 2px; }
+.pseg { width: 14px; height: 8px; border-radius: 2px; background: var(--line); }
+.pseg.draft { background: linear-gradient(90deg, var(--accent) 50%, var(--line) 50%); }
+.pseg.settled { background: var(--accent); }
+.pseg.current { outline: 1.5px solid var(--accent); outline-offset: 1px; }
+.pbar .pct { font-size: 12px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.pbig { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; margin: 4px 0 10px; }
+.pbig span { display: block; height: 100%; background: var(--accent); }
+.blist { font: 14px/1.4 var(--ui); display: flex; flex-direction: column; gap: 2px; margin-top: 8px; }
+.brow { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: transparent; padding: 6px 8px; border-radius: 6px; }
+.brow:hover { background: var(--accent-soft); }
+.brow .bico { color: var(--accent); width: 1em; text-align: center; }
+.brow .bname { flex: 1; }
+.brow.current .bname { font-weight: 600; }
+.brow .bst { color: var(--muted); font-size: 12.5px; }
+.prog .page + .page { margin-top: 16px; }
+.pnote { font: 12.5px/1.4 var(--ui); color: var(--muted); margin: 0; }
+.btn { border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 5px 10px; line-height: 1.2; text-decoration: none; color: var(--ink); }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn.ghost:hover { background: var(--accent-soft); }
+.banner { background: var(--accent-soft); border-bottom: 1px solid var(--line); font-size: 13px;
+  padding-block: 6px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.main { display: grid; grid-template-columns: var(--chatCol, minmax(320px, 36%)) minmax(0, 1fr); min-height: 0; }
+/* drag handles for the chat and outline widths; double-click resets */
+.resizer { position: absolute; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 5; touch-action: none; }
+.resizer::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 2px; background: transparent; transition: background .15s; }
+.resizer:hover::after, .resizer.drag::after { background: var(--accent); }
+.chat > .resizer { right: -4px; }
+.main.only-chat .resizer, .main.only-work .resizer { display: none; }
+body.resizing, body.resizing * { cursor: col-resize !important; user-select: none !important; }
+body.resizing iframe, body.resizing textarea { pointer-events: none; }
+/* one panel full width; a single column, so the visible panel never lands in the chat's narrow track */
+.main.only-chat, .main.only-work { grid-template-columns: minmax(0, 1fr); }
+.main.only-chat .work, .main.only-work .chat { display: none; }
+.main.only-chat .chat { border-right: 0; }
+.main.only-chat .thread, .main.only-chat .composer { padding-inline: max(16px, calc((100% - 780px) / 2)); }
+.mtabs { display: none; }
+
+/* ---- chat ---- */
+.chat { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; min-width: 0; background: var(--panel); border-right: 1px solid var(--line); }
+.msg a.eqlink, .msg a[href^="#"] { color: var(--accent); text-decoration: underline dotted; text-underline-offset: 2px; cursor: pointer; white-space: nowrap; }
+.msg a.eqlink:hover, .msg a[href^="#"]:hover { text-decoration-style: solid; }
+.thread { overflow: auto; padding: 14px 16px 6px; display: flex; flex-direction: column; gap: 12px; }
+.msg { max-width: 100%; min-width: 0; }
+.msg.you { align-self: flex-end; background: var(--you); border: 1px solid var(--line); border-radius: 10px 10px 2px 10px; padding: 8px 11px; max-width: 92%; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.tutor { font: 15px/1.6 var(--prose); overflow-wrap: anywhere; }
+.msg.tutor p { margin: 0 0 .65em; }
+.msg.tutor p:last-child { margin-bottom: 0; }
+.msg.tutor ul, .msg.tutor ol { margin: 0 0 .65em; padding-left: 1.3em; }
+.msg.tutor code { font: 13px var(--mono); background: var(--accent-soft); padding: 0 3px; border-radius: 3px; }
+.msg.tutor pre { overflow-x: auto; background: var(--accent-soft); padding: 8px; border-radius: 6px; }
+.msg.tutor blockquote, .msg.you blockquote { margin: 0 0 .5em; padding-left: 10px; border-left: 3px solid var(--line); color: var(--muted); }
+.msg mjx-container[display="true"] { overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+.msg .by { font: 11px var(--ui); color: var(--muted); margin-top: 4px; }
+.handoff { border: 1px dashed var(--line); border-radius: 8px; padding: 6px 10px 10px; background: var(--paper); }
+.handoff .hhead { display: flex; align-items: center; justify-content: space-between; font: 12px var(--ui); color: var(--muted); margin-bottom: 4px; }
+.handoff .hhead .btn { padding: 2px 8px; font-size: 12px; }
+.handoff .msg.tutor { font-size: 14px; }
+.editnote { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; margin-top: 6px; padding: 3px 4px 3px 8px; border-left: 2px solid var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; font: 12.5px/1.4 var(--ui); color: var(--muted); }
+.editnote span { flex: 1; min-width: 12em; }
+.editnote .btn { padding: 2px 8px; font-size: 12.5px; color: var(--accent); }
+.welcome { color: var(--muted); font-size: 13.5px; border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; }
+.welcome b { color: var(--ink); }
+.thinking { color: var(--muted); display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.thinking::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: pulse 1.1s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .thinking::before { animation: none; } }
+.err { color: var(--danger); font-size: 13px; }
+.composer { border-top: 1px solid var(--line); padding: 10px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+textarea { width: 100%; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); padding: 8px 10px; resize: vertical; }
+textarea:focus { outline: none; border-color: var(--accent); }
+#ask { min-height: 64px; max-height: 40vh; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row .grow { flex: 1; }
+.kbd { font-size: 12px; color: var(--muted); }
+
+/* ---- work ---- */
+.work { display: grid; grid-template-rows: auto 1fr; min-height: 0; min-width: 0; }
+.tabs { display: flex; gap: 2px; align-items: flex-end; border-bottom: 1px solid var(--line); background: var(--panel); padding: 6px 12px 0; flex-wrap: wrap; }
+.tab { border: 1px solid transparent; border-bottom: 0; background: transparent; padding: 6px 12px; border-radius: 6px 6px 0 0; color: var(--muted); }
+.tab[aria-selected="true"] { background: var(--desk); border-color: var(--line); color: var(--ink); font-weight: 500; margin-bottom: -1px; }
+.tabs .grow { flex: 1; }
+.tabs .tools { display: flex; gap: 6px; padding-bottom: 6px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; background: var(--paper); padding: 4px 9px; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--paper); }
+.pane { min-height: 0; overflow: hidden; display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); } /* one stretched cell: the tab's content fills the pane's height */
+.pane[hidden] { display: none !important; }
+
+.sketch { position: relative; min-height: 0; display: grid; grid-template-columns: var(--outlineW, 200px) minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+.sketch > .resizer { left: calc(var(--outlineW, 200px) - 4px); }
+.sketch.no-outline > .resizer { display: none; }
+/* fixed columns, so hiding one part never slides another into a zero-width column */
+.sketch .outline { grid-column: 1; grid-row: 1; }
+.sketch .src { grid-column: 2; grid-row: 1; }
+.sketch .preview { grid-column: 3; grid-row: 1; }
+.sketch.v-source { grid-template-columns: var(--outlineW, 200px) minmax(0, 1fr) 0; }
+.sketch.v-source .preview { display: none; }
+.sketch.v-preview { grid-template-columns: var(--outlineW, 200px) 0 minmax(0, 1fr); }
+.sketch.v-preview .src { display: none; }
+.sketch.no-outline { grid-template-columns: 0 minmax(0, 1fr) minmax(0, 1fr); }
+.sketch.no-outline.v-source { grid-template-columns: 0 minmax(0, 1fr) 0; }
+.sketch.no-outline.v-preview { grid-template-columns: 0 0 minmax(0, 1fr); }
+.sketch.no-outline .outline { display: none; }
+.outline { overflow: auto; border-right: 1px solid var(--line); padding: 10px 8px; font-size: 13px; background: var(--panel); }
+.outline h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 2px 4px 6px; font-weight: 600; }
+.outline button { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 4px 6px; border-radius: 5px; }
+.outline button:hover { background: var(--accent-soft); }
+.outline .l2 { padding-left: 16px; color: var(--muted); }
+.outline .env { padding-left: 16px; color: var(--muted); font-size: 12.5px; }
+.outline .empty { color: var(--muted); font-size: 12.5px; padding: 4px 6px; }
+.src { min-width: 0; min-height: 0; display: flex; }
+#tex { flex: 1; border: 0; border-radius: 0; resize: none; font: 13px/1.6 var(--mono); padding: 14px 16px; background: var(--paper); tab-size: 2; white-space: pre; overflow: auto; }
+.preview { overflow: auto; border-left: 1px solid var(--line); background: var(--desk); padding: 18px 16px 80px; }
+.page { background: var(--paper); max-width: 760px; margin: 0 auto; padding: 40px 48px 56px; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 18px rgba(0,0,0,.06);
+  font: 15.5px/1.65 var(--prose); overflow-wrap: anywhere; }
+.page h1 { font: 600 22px/1.3 var(--prose); text-align: center; margin: 0 0 6px; text-wrap: balance; }
+.page .sub { text-align: center; color: var(--muted); font-size: 14px; margin-bottom: 26px; }
+.page h2 { font: 600 18px/1.3 var(--prose); margin: 1.6em 0 .5em; text-wrap: balance; }
+.page h3 { font: 600 16px/1.3 var(--prose); margin: 1.2em 0 .4em; }
+.page p { margin: 0 0 .8em; }
+.page .thm { margin: .9em 0; }
+.page .thm .h { font-weight: 600; }
+.page .thm.it { font-style: italic; }
+.page .proof .h { font-style: italic; }
+.page .atype { font-style: normal; color: var(--accent); font: 500 12px var(--ui); letter-spacing: .03em; text-transform: uppercase; margin-right: 4px; }
+.page .moment { font: 12.5px/1.4 var(--ui); color: var(--muted); border-left: 2px solid var(--accent); padding-left: 6px; display: inline-block; margin: 2px 0; }
+.page .math { overflow-x: auto; overflow-y: hidden; }
+.page table { border-collapse: collapse; margin: .6em auto; font-size: 14px; }
+.page td { padding: 3px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.page tr:first-child td { font-weight: 600; border-bottom: 2px solid var(--ink); }
+.page .center { text-align: center; }
+.page .placeholder { color: var(--muted); }
+.page .flash { animation: flash 1.2s ease-out; }
+@keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
+.page.emptypage { text-align: center; color: var(--muted); font: 14px/1.5 var(--ui); }
+
+.pdfwrap { position: relative; height: 100%; overflow: auto; padding: 18px 16px 60px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.pdfwrap canvas { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.18); max-width: 100%; height: auto; }
+.pdfmark { position: absolute; pointer-events: none; border-radius: 4px; background: var(--accent-soft); outline: 2px solid var(--accent); animation: markfade 3.5s ease-out forwards; }
+@keyframes markfade { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+.pdfmsg { color: var(--muted); margin-top: 40px; text-align: center; max-width: 420px; }
+.prog { height: 100%; overflow: auto; padding: 18px 16px 60px; }
+.prog .page { font-size: 15px; }
+.prog .page h1 { text-align: left; font-size: 20px; }
+.prog .page li { margin: .2em 0; }
+
+@media (max-width: 900px) {
+  .main { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .mtabs { display: flex; gap: 4px; padding: 6px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .main.show-work .chat { display: none; }
+  .main:not(.show-work) .work { display: none; }
+  .chat { border-right: 0; }
+  /* narrow: split stacks source over page; the id outranks the wide-layout class rules */
+  #sketch { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  #sketch.v-source, #sketch.v-preview { grid-template-rows: minmax(0, 1fr); }
+  #sketch .outline { display: none; }
+  .resizer { display: none !important; }
+  #sketch .src { grid-column: 1; grid-row: 1; }
+  #sketch .preview { grid-column: 1; grid-row: 2; display: block; border-left: 0; border-top: 1px solid var(--line); }
+  #sketch.v-source .preview { display: none; }
+  #sketch.v-preview .src { display: none; }
+  #sketch.v-preview .preview { grid-row: 1; border-top: 0; }
+  .page { padding: 24px 18px 40px; }
+  .bar .what, #layoutSeg { display: none; }
+  .pseg { width: 8px; }
+}
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>Model Builder</div>
+    <span class="what" id="what">Guided build</span>
+    <button class="pbar" id="pbar" hidden><span class="psegs" id="psegs" aria-hidden="true"></span><span class="pct" id="pct"></span></button>
+    <span class="seg" id="layoutSeg" role="group" aria-label="Panels">
+      <button id="lChat" aria-pressed="false" title="Chat only">Chat</button><button id="lBoth" aria-pressed="true" title="Chat and sketch side by side">Both</button><button id="lWork" aria-pressed="false" title="Sketch only">Sketch</button>
+    </span>
+    <span class="grow"></span>
+    <span class="stamp" id="stamp">Loading…</span>
+    <button class="btn" id="exportBtn" title="Download the sketch as main.tex (packed in a .zip; a .tex file can't be downloaded from here directly)">Export .tex</button>
+    <select class="btn" id="modelSel" aria-label="Model for the tutor">
+      <option value="opus">Opus 5.5 · most careful</option>
+      <option value="opusq">Opus 5.5 · quicker</option>
+      <option value="sonnet">Sonnet 5.5 · fastest</option>
+    </select>
+    <a class="btn" id="reader" hidden target="_blank" rel="noopener" title="Ask about a passage of a PDF">Margin Questions ↗</a>
+  </header>
+  <div class="banner" id="banner" hidden></div>
+  <div class="main" id="main">
+    <nav class="mtabs" aria-label="Panels">
+      <button class="btn" id="mChat">Chat</button>
+      <button class="btn" id="mWork">Sketch &amp; draft</button>
+    </nav>
+    <section class="chat" aria-label="Tutor">
+      <div class="resizer" id="chatResizer" role="separator" aria-orientation="vertical" aria-label="Resize chat" title="Drag to resize · double-click to reset"></div>
+      <div class="thread" id="thread"></div>
+      <div class="composer">
+        <textarea id="ask" placeholder="Write your answer, a derivation in LaTeX, or a question…" aria-label="Message to the tutor"></textarea>
+        <div class="row">
+          <button class="btn ghost" id="clearBtn" title="Delete this chat to keep the tutor's context small. The tutor first writes a short note on where you are, which it keeps.">Clear</button>
+          <span class="kbd" id="ctxSize" title="Rough size of what the tutor reads on every message: rules, draft, progress, sketch and this chat"></span>
+          <span class="kbd grow" id="sendHint" title="Snippets: mk → $…$, md → $$…$$ (⌘Z undoes)">↵ send · ⇧↵ new line</span>
+          <button class="btn" id="stopBtn" hidden>Stop</button>
+          <button class="btn" id="retryBtn" hidden>Retry</button>
+          <button class="btn primary" id="sendBtn">Send</button>
+        </div>
+      </div>
+    </section>
+    <section class="work" aria-label="Work">
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" id="t-sketch" aria-selected="true">Sketch</button>
+        <button class="tab" role="tab" id="t-draft" aria-selected="false">Draft</button>
+        <button class="tab" role="tab" id="t-prog" aria-selected="false">Progress</button>
+        <span class="grow"></span>
+        <span class="tools" id="sketchTools">
+          <button class="btn ghost" id="quoteBtn" title="Quote the selected source lines in the chat">Quote in chat</button>
+          <button class="btn ghost" id="outlineBtn" title="Show or hide the outline">Outline</button>
+          <span class="seg" role="group" aria-label="View">
+            <button id="vSplit" aria-pressed="true">Split</button><button id="vSource" aria-pressed="false">Source</button><button id="vPreview" aria-pressed="false">Page</button>
+          </span>
+        </span>
+      </div>
+      <div class="pane" id="p-sketch">
+        <div class="sketch" id="sketch">
+          <div class="resizer" id="outlineResizer" role="separator" aria-orientation="vertical" aria-label="Resize outline" title="Drag to resize · double-click to reset"></div>
+          <nav class="outline" id="outline" aria-label="Outline"><h2>Outline</h2><div id="outlineList"></div></nav>
+          <div class="src"><textarea id="tex" spellcheck="false" aria-label="Sketch source (LaTeX)"></textarea></div>
+          <div class="preview" id="preview"><article class="page" id="pageOut"></article></div>
+        </div>
+      </div>
+      <div class="pane" id="p-draft" hidden><div class="pdfwrap" id="pdfwrap"><p class="pdfmsg">Open this tab to load the source draft.</p></div></div>
+      <div class="pane" id="p-prog" hidden><div class="prog"><article class="page" id="blocksOut"></article><article class="page" id="progOut"></article></div></div>
+    </section>
+  </div>
+</div>
+
+<script>
+window.MathJax = {
+  tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]], displayMath: [["$$", "$$"], ["\\[", "\\]"]], processEscapes: true, tags: "ams" },
+  svg: { fontCache: "global" },
+  options: { enableMenu: false },
+  startup: { typeset: false, ready() { MathJax.startup.defaultReady(); MathJax.startup.promise.then(() => { window.MB_MJ_READY = true; renderPreview(); renderProgress(); const th = document.getElementById("thread"); typeset(th).then(() => linkify(th)); }); } }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+const MODELS = {
+  opusq: { id: "claude-opus-5-5", tier: "complex", effort: "medium", label: "Opus 5.5 · quicker" },
+  opus: { id: "claude-opus-5-5", tier: "complex", effort: "high", label: "Opus 5.5 · most careful" },
+  sonnet: { id: "claude-sonnet-5-5", tier: "default", effort: "medium", label: "Sonnet 5.5" },
+};
+const S = {
+  db: null, sample: null, model: LS.get("mb.model", "opus"), handoff: "", clearing: false,
+  sketch: { tex: "", updatedAt: 0, syncedAt: 0 }, savedTex: "", saving: Promise.resolve(), dirtyTimer: null,
+  progress: "", ref: { text: "", pdfAssetId: "", title: "" }, status: {}, statusLoaded: false,
+  chat: [], pending: false, ctl: null, error: null, streaming: "", pdfP: null, undo: {},
+};
+// undo the brief Nov-2026 switch to "quicker": put anyone it moved back on "most careful"
+if (LS.get("mb.modelV2", false) && !LS.get("mb.modelV3", false)) { if (S.model === "opusq") S.model = "opus"; LS.set("mb.model", S.model); }
+LS.set("mb.modelV3", true);
+if (!MODELS[S.model]) S.model = "opus";
+$("modelSel").value = S.model;
+$("modelSel").onchange = (e) => { S.model = e.target.value; LS.set("mb.model", S.model); };
+
+/* check:begin */function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }/* check:end */
+function banner(t) { $("banner").hidden = !t; $("banner").textContent = t || ""; }
+function when(t) { if (!t) return ""; const d = new Date(t); return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }); }
+
+/* ---------- math typesetting ---------- */
+let tsChain = Promise.resolve();
+function typeset(el, reset) {
+  if (!el || !window.MathJax || !MathJax.typesetPromise) return Promise.resolve();
+  tsChain = tsChain.then(() => {
+    if (!el.isConnected) return;
+    if (reset) { MathJax.typesetClear([el]); MathJax.texReset(); }
+    return MathJax.typesetPromise([el]);
+  }).catch(() => {});
+  return tsChain;
+}
+// links run after typesetting, so they never land inside a formula; until MathJax is up they wait (MB_NO_MJ: it never loaded)
+function mathReady() { return !!(window.MB_MJ_READY || window.MB_NO_MJ); }
+window.addEventListener("load", () => setTimeout(() => { if (!window.MathJax || !MathJax.typesetPromise) { window.MB_NO_MJ = true; linkify($("thread")); } }, 4000));
+function finishChat(el) { if (!mathReady()) return; typeset(el).then(() => linkify(el)); }
+const MATH_MD = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|(?<![\\$])\$(?![\s$])(?:[^$\n\\]|\\.)+?(?<!\s)\$)/g;
+function renderMD(el, src, chat) {
+  const maths = [];
+  const masked = String(src).replace(MATH_MD, (m) => { maths.push(m); return `@@MB${maths.length - 1}@@`; });
+  let html = window.marked ? marked.parse(masked, { gfm: true, breaks: false }) : esc(masked).replace(/\n/g, "<br>");
+  if (window.DOMPurify) html = DOMPurify.sanitize(html);
+  el.innerHTML = html.replace(/@@MB(\d+)@@/g, (_, i) => esc(maths[+i]));
+  if (chat) finishChat(el); else typeset(el);
+}
+
+/* ---------- LaTeX sketch → page ----------
+   A light renderer for a model sketch, not a LaTeX engine: sections, theorem-style environments, lists, simple tables,
+   text macros, the template's \atype and \moment, and the sketch's own macros (model/ref.macros). All math goes to MathJax untouched. */
+/* check:begin */
+const ENV_LABEL = { assumption: "Assumption", definition: "Definition", proposition: "Proposition", lemma: "Lemma", corollary: "Corollary", remark: "Remark" };
+const ITALIC_ENVS = new Set(["proposition", "lemma", "corollary"]);
+const ANCHOR_RE = /\\(section|subsection)(\*?)\{([^{}]*)\}|\\begin\{(assumption|definition|proposition|lemma|corollary|remark)\}(\[[^\]]*\])?/g;
+const MATH_TEX = /\\begin\{(equation|align|gather|multline|eqnarray|alignat|flalign)(\*?)\}[\s\S]*?\\end\{\1\2\}|\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|(?<!\\)\$(?:[^$\\]|\\.)+?\$/g;
+function stripComments(src) { return src.replace(/(^|[^\\])%.*$/gm, "$1"); }
+function splitDoc(src) {
+  const clean = stripComments(src);
+  const b = clean.indexOf("\\begin{document}");
+  const e = clean.indexOf("\\end{document}");
+  const start = b >= 0 ? b + "\\begin{document}".length : 0;
+  return { clean, start, body: clean.slice(start, e > start ? e : undefined), pre: b >= 0 ? clean.slice(0, b) : "" };
+}
+function braceArg(s, from) { // contents of the {...} that starts at s[from]
+  if (s[from] !== "{") return null;
+  let depth = 0;
+  for (let i = from; i < s.length; i++) {
+    if (s[i] === "{") depth++;
+    else if (s[i] === "}") { depth--; if (depth === 0) return { arg: s.slice(from + 1, i), end: i + 1 }; }
+  }
+  return null;
+}
+function macro1(s, name, fn) { // replace \name{arg} (nested braces ok)
+  let out = "", i = 0;
+  const key = "\\" + name + "{";
+  for (;;) {
+    const j = s.indexOf(key, i);
+    if (j < 0) return out + s.slice(i);
+    const a = braceArg(s, j + key.length - 1);
+    if (!a) return out + s.slice(i);
+    out += s.slice(i, j) + fn(a.arg, a.end, s);
+    i = a.end;
+    if (fn.consumed) { i = fn.consumed; fn.consumed = 0; }
+  }
+}
+function dataMacros(s) { // the sketch's own macros, from model/ref.macros: { name: { tex: "… #1 … #2", class: "a-z" } }
+  for (const [name, m] of Object.entries(S.ref.macros || {})) {
+    if (!/^[A-Za-z]+$/.test(name) || !m || typeof m.tex !== "string") continue;
+    const n = Math.max(1, ...[...m.tex.matchAll(/#([1-9])/g)].map((x) => +x[1]));
+    const fn = (a, end, full) => {
+      const args = [a];
+      for (let i = 1; i < n; i++) { const b = braceArg(full, end); if (!b) return a; args.push(b.arg); end = b.end; }
+      if (n > 1) fn.consumed = end;
+      const out = esc(m.tex).replace(/#([1-9])/g, (_, k) => args[k - 1] ?? "");
+      return /^[a-z-]+$/.test(m.class || "") ? `<span class="${m.class}">${out}</span>` : out;
+    };
+    s = macro1(s, name, fn);
+  }
+  return s;
+}
+function textMacros(s) {
+  s = macro1(s, "textbf", (a) => `<b>${textMacros(a)}</b>`);
+  s = macro1(s, "emph", (a) => `<i>${textMacros(a)}</i>`);
+  s = macro1(s, "textit", (a) => `<i>${textMacros(a)}</i>`);
+  s = macro1(s, "texttt", (a) => `<code>${a}</code>`);
+  s = macro1(s, "textnormal", (a) => a);
+  s = macro1(s, "atype", (a) => `<span class="atype">${a}</span>`);
+  s = dataMacros(s);
+  s = macro1(s, "label", () => "");
+  s = macro1(s, "ref", (a) => `<span class="placeholder">${a}</span>`);
+  const mom = (a, end, full) => { const b = braceArg(full, end); if (b) { mom.consumed = b.end; return `<span class="moment">Moment for ${a}: ${b.arg}</span>`; } return a; };
+  s = macro1(s, "moment", mom);
+  s = s.replace(/\\cite[tp]?\*?(\[[^\]]*\])?\{([^}]*)\}/g, (_, __, k) => `[${k}]`);
+  s = s.replace(/\\S(?![A-Za-z])/g, "§").replace(/---/g, "—").replace(/--/g, "–").replace(/``/g, "“").replace(/''/g, "”")
+    .replace(/\\%/g, "%").replace(/\\&amp;/g, "&amp;").replace(/~/g, "&nbsp;").replace(/\\(qquad|quad|noindent|medskip|bigskip|smallskip|centering|newline)\b/g, " ");
+  return s;
+}
+function tableHTML(inner) {
+  const rows = inner.replace(/\\(toprule|midrule|bottomrule|hline)/g, "").split(/\\\\/).map((r) => r.trim()).filter(Boolean);
+  return "<div style=\"overflow-x:auto\"><table>" + rows.map((r) => "<tr>" + r.split("&amp;").map((c) => `<td>${c.trim()}</td>`).join("") + "</tr>").join("") + "</table></div>";
+}
+function texToHTML(src) {
+  const { body, pre } = splitDoc(src);
+  const maths = [];
+  // displayed math becomes its own block, so it never sits inside a <p>
+  let s = body.replace(MATH_TEX, (m) => { maths.push(m); const ph = `@@M${maths.length - 1}@@`; return /^(\$(?!\$)|\\\()/.test(m) ? ph : `\n\n${ph}\n\n`; });
+  s = esc(s);
+  // anchors (sections and theorem-style environments), numbered in order of appearance
+  let k = 0; const ctr = {}; let sec = 0, sub = 0;
+  s = s.replace(ANCHOR_RE, (m, kind, star, title, env, opt) => {
+    const id = "a" + (k++);
+    if (kind === "section") { if (!star) { sec++; sub = 0; } return `\n\n<h2 id="${id}">${star ? "" : sec + "&ensp;"}${textMacros(title)}</h2>\n\n`; }
+    if (kind === "subsection") { if (!star) sub++; return `\n\n<h3 id="${id}">${star ? "" : sec + "." + sub + "&ensp;"}${textMacros(title)}</h3>\n\n`; }
+    ctr[env] = (ctr[env] || 0) + 1;
+    const o = opt ? ` (${textMacros(opt.slice(1, -1))})` : "";
+    return `\n\n<div class="thm${ITALIC_ENVS.has(env) ? " it" : ""}" id="${id}"><span class="h">${ENV_LABEL[env]} ${ctr[env]}${o}.</span> `;
+  });
+  s = s.replace(/\\end\{(assumption|definition|proposition|lemma|corollary|remark)\}/g, "</div>\n\n");
+  s = s.replace(/\\begin\{proof\}(\[[^\]]*\])?/g, '\n\n<div class="proof"><span class="h">Proof.</span> ').replace(/\\end\{proof\}/g, " ∎</div>\n\n");
+  s = s.replace(/\\begin\{tabular\}\{[^}]*\}([\s\S]*?)\\end\{tabular\}/g, (_, inner) => "\n\n" + tableHTML(inner) + "\n\n");
+  s = s.replace(/\\begin\{center\}/g, '\n\n<div class="center">').replace(/\\end\{center\}/g, "</div>\n\n");
+  s = s.replace(/\\begin\{itemize\}/g, "\n\n<ul>").replace(/\\end\{itemize\}/g, "</ul>\n\n")
+       .replace(/\\begin\{enumerate\}/g, "\n\n<ol>").replace(/\\end\{enumerate\}/g, "</ol>\n\n").replace(/\\item\b\s*/g, "<li>");
+  s = s.replace(/\\paragraph\*?\{([^{}]*)\}/g, (_, t) => `<b>${t}</b>&ensp;`);
+  s = s.replace(/\\(bibliographystyle|bibliography)\{[^}]*\}/g, "");
+  // title block
+  const title = (() => { const i = pre.indexOf("\\title{"); if (i < 0) return ""; const a = braceArg(pre, i + 6); return a ? a.arg : ""; })();
+  s = s.replace(/\\maketitle/, () => {
+    if (!title) return "";
+    const t = esc(title).replace(/\\\\(\[[^\]]*\])?/g, "<br>").replace(/\\(large|Large|small|normalsize)\b/g, "");
+    return `\n\n<h1>${textMacros(t)}</h1>\n\n`;
+  });
+  s = textMacros(s);
+  // paragraphs
+  s = s.split(/\n\s*\n/).map((chunk) => {
+    const c = chunk.trim();
+    if (!c) return "";
+    if (/^<(h1|h2|h3|div|ul|ol|\/div|\/ul|\/ol|table)/.test(c) || /^@@M\d+@@$/.test(c)) return c;
+    return `<p>${c}</p>`;
+  }).join("\n");
+  // math back, displayed math in its own scroll box
+  s = s.replace(/<p>(@@M\d+@@)<\/p>/g, "$1").replace(/@@M(\d+)@@/g, (_, i) => {
+    const m = maths[+i];
+    const display = !/^(\$(?!\$)|\\\()/.test(m);
+    return display ? `<div class="math" data-mi="${i}">${esc(m)}</div>` : esc(m);
+  });
+  return s;
+}
+/* check:end */
+function outlineItems(src) {
+  const { clean, start, body } = splitDoc(src);
+  const items = []; let k = 0;
+  for (const m of body.matchAll(ANCHOR_RE)) {
+    const line = clean.slice(0, start + m.index).split("\n").length - 1;
+    const id = "a" + (k++);
+    if (m[1]) items.push({ id, line, cls: m[1] === "subsection" ? "l2" : "l1", text: m[3].replace(/\$[^$]*\$/g, "…") || "(untitled)" });
+    else items.push({ id, line, cls: "env", text: ENV_LABEL[m[4]] + (m[5] ? " " + m[5] : "") });
+  }
+  return items;
+}
+let pvTimer = null;
+function renderPreview() {
+  const out = $("pageOut");
+  const src = $("tex").value;
+  if (!src.trim()) {
+    out.className = "page emptypage";
+    out.innerHTML = "<p>No sketch here yet.</p><p>Ask Claude Code to sync <code>model/main.tex</code> into Model Builder, or start typing LaTeX on the left.</p>";
+  } else {
+    out.className = "page";
+    try { out.innerHTML = texToHTML(src); } catch (e) { out.innerHTML = `<p class="err">The page couldn't be drawn: ${esc(e.message)}</p>`; }
+    typeset(out, true);
+  }
+  const list = $("outlineList");
+  const items = src.trim() ? outlineItems(src) : [];
+  list.innerHTML = items.length ? "" : '<div class="empty">Sections and assumptions appear here.</div>';
+  for (const it of items) {
+    const b = document.createElement("button");
+    b.className = it.cls; b.textContent = it.text;
+    b.onclick = () => jumpTo(it);
+    list.appendChild(b);
+  }
+}
+function jumpTo(it) {
+  const ta = $("tex");
+  const lines = ta.value.split("\n");
+  const pos = lines.slice(0, it.line).reduce((n, l) => n + l.length + 1, 0);
+  if (getComputedStyle(ta.parentElement).display !== "none") {
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(pos, pos + (lines[it.line] || "").length);
+    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+    ta.scrollTop = Math.max(0, it.line * lh - 60);
+  }
+  const el = document.getElementById(it.id);
+  if (el) { el.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+}
+
+/* ---------- equation links ----------
+   eqIndex numbers the sketch's displayed equations the way MathJax's AMS tagging does (equation/multline: one number;
+   align/gather/…: one per row unless \nonumber, \notag or a starred env; \tag{} overrides), and records each \label. */
+/* check:begin */
+const NUMBERED_ONE = new Set(["equation", "multline"]);
+const NUMBERED_ROWS = new Set(["align", "gather", "alignat", "flalign", "eqnarray"]);
+function splitRows(s) { // split on \\ at the top level only (not inside aligned, cases, matrices…)
+  const rows = []; let depth = 0, last = 0;
+  const re = /\\begin\{[^}]*\}|\\end\{[^}]*\}|\\\\/g; let m;
+  while ((m = re.exec(s))) {
+    if (m[0].startsWith("\\begin")) depth++;
+    else if (m[0].startsWith("\\end")) depth--;
+    else if (depth === 0) { rows.push({ text: s.slice(last, m.index), at: last }); last = m.index + 2; }
+  }
+  rows.push({ text: s.slice(last), at: last });
+  return rows;
+}
+let eqMemo = { src: null, out: null };
+function eqIndex(src) {
+  if (eqMemo.src === src) return eqMemo.out;
+  const out = buildEqIndex(src); eqMemo = { src, out };
+  return out;
+}
+function buildEqIndex(src) {
+  const { clean, start, body } = splitDoc(src);
+  const out = []; let n = 0, i = 0;
+  for (const m of body.matchAll(MATH_TEX)) {
+    const mi = i++;
+    const t = m[0];
+    if (/^(\$(?!\$)|\\\()/.test(t)) continue; // inline math
+    const lineOf = (off) => clean.slice(0, start + m.index + off).split("\n").length - 1;
+    const env = t.match(/^\\begin\{(\w+)(\*?)\}/);
+    const name = env ? env[1] : "", starred = env ? !!env[2] : true;
+    const block = { mi, line: lineOf(0), rows: [] };
+    let rows;
+    if (NUMBERED_ROWS.has(name)) {
+      const open = env[0].length, close = t.lastIndexOf("\\end{");
+      rows = splitRows(t.slice(open, close)).map((r) => ({ text: r.text, at: r.at + open }))
+        .filter((r, k, a) => !(k === a.length - 1 && a.length > 1 && !r.text.trim()));
+    }
+    else rows = [{ text: t, at: 0 }];
+    for (const r of rows) {
+      const tag = r.text.match(/\\tag\*?\{([^}]*)\}/);
+      let num = null;
+      if (tag) num = tag[1];
+      else if (!starred && (NUMBERED_ONE.has(name) || NUMBERED_ROWS.has(name)) && !/\\(nonumber|notag)\b/.test(r.text)) num = String(++n);
+      const labels = [...r.text.matchAll(/\\label\{([^}]*)\}/g)].map((x) => ({ key: x[1], line: lineOf(r.at + x.index) }));
+      block.rows.push({ num, labels, line: lineOf(r.at) });
+    }
+    out.push(block);
+  }
+  return out;
+}
+function findEq(key) { // by \label key, or by the printed number
+  const idx = eqIndex($("tex").value);
+  for (const b of idx) for (const r of b.rows) {
+    const l = r.labels.find((x) => x.key === key);
+    if (l) return { mi: b.mi, line: l.line, num: r.num };
+  }
+  for (const b of idx) for (const r of b.rows) if (r.num !== null && r.num === key) return { mi: b.mi, line: r.line, num: r.num };
+  return null;
+}
+function eqListForTutor() {
+  const lines = [];
+  for (const b of eqIndex($("tex").value)) for (const r of b.rows) {
+    if (r.num === null && !r.labels.length) continue;
+    lines.push(`(${r.num ?? "no number"}) ${r.labels.map((l) => l.key).join(", ") || "no label"} — line ${r.line + 1}`);
+  }
+  return lines.length ? lines.join("\n") : "(no numbered or labelled equations yet)";
+}
+function escRe(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
+// plain-text references that become links: (<short>.13) → the source draft, where <short> is model/ref.short;
+// \eqref{key} / \ref{key} and "eq. (3)" / "equation (3)" → the sketch
+function linkRe() {
+  const draft = S.ref.short ? escRe(S.ref.short) + "\\.[A-Za-z0-9.]*[A-Za-z0-9]" : "(?!)";
+  return new RegExp(`\\((${draft})\\)|\\\\(?:eq)?ref\\{([^}]+)\\}|\\b((?:[Ee]qs?\\.?|[Ee]quations?)\\s*)\\((\\d+[a-z]?)\\)`, "g");
+}
+function isDraftRef(target) { return !!S.ref.short && target.startsWith(S.ref.short + "."); }
+/* check:end */
+function linkify(root) {
+  if (!root) return;
+  // MathJax turns a bare \eqref{key} / \ref{key} into its own (???) link; replace it with ours
+  if (window.MathJax && MathJax.startup && MathJax.startup.document && MathJax.startup.document.getMathItemsWithin) {
+    for (const item of MathJax.startup.document.getMathItemsWithin(root)) {
+      const r = String(item.math || "").trim().match(/^\\(?:eq)?ref\{([^}]+)\}$/);
+      if (!r || !item.typesetRoot || !item.typesetRoot.isConnected) continue;
+      const f = findEq(r[1]);
+      const a = document.createElement("a");
+      a.className = "eqlink"; a.href = "#" + encodeURIComponent(r[1]); a.title = "Show in the sketch";
+      a.textContent = f && f.num ? `(${f.num})` : r[1];
+      item.typesetRoot.replaceWith(a);
+    }
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => n.parentElement.closest("a, code, pre, mjx-container, .by") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+  });
+  const nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+  for (const node of nodes) {
+    const t = node.nodeValue, LINK_RE = linkRe();
+    if (!LINK_RE.test(t)) continue;
+    LINK_RE.lastIndex = 0;
+    const frag = document.createDocumentFragment(); let last = 0, m;
+    while ((m = LINK_RE.exec(t))) {
+      let pre = "", text, target;
+      if (m[1]) { text = m[0]; target = m[1]; }
+      else if (m[2]) { const f = findEq(m[2]); text = f && f.num ? `(${f.num})` : m[2]; target = m[2]; if (!f) continue; }
+      else { if (!findEq(m[4])) continue; pre = m[3]; text = `(${m[4]})`; target = m[4]; }
+      frag.append(t.slice(last, m.index) + pre);
+      const a = document.createElement("a");
+      a.className = "eqlink"; a.href = "#" + encodeURIComponent(target); a.textContent = text;
+      a.title = isDraftRef(target) ? "Show in the draft" : "Show in the sketch";
+      frag.append(a); last = m.index + m[0].length;
+    }
+    if (!last) continue;
+    frag.append(t.slice(last));
+    node.replaceWith(frag);
+  }
+}
+function showWork() {
+  const main = $("main");
+  if (main.classList.contains("only-chat")) setLayout("lBoth");
+  main.classList.add("show-work");
+}
+function flashEl(el) { el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); }
+function jumpToEq(key) {
+  const f = findEq(key);
+  if (!f) { banner(`Equation “${key}” isn't in the sketch now. It may have been renamed or removed.`); setTimeout(() => banner(""), 5000); return; }
+  showWork(); setTab("t-sketch");
+  // the source line, if the source is showing
+  const ta = $("tex");
+  if (getComputedStyle(ta.parentElement).display !== "none") {
+    const lines = ta.value.split("\n");
+    const pos = lines.slice(0, f.line).reduce((n, l) => n + l.length + 1, 0);
+    ta.focus({ preventScroll: true });
+    ta.setSelectionRange(pos, pos + (lines[f.line] || "").length);
+    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+    ta.scrollTop = Math.max(0, f.line * lh - ta.clientHeight / 3);
+  }
+  // the rendered page, if it's showing
+  const el = $("pageOut").querySelector(`.math[data-mi="${f.mi}"]`);
+  if (el && getComputedStyle($("preview")).display !== "none") {
+    el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    flashEl(el);
+  }
+}
+async function jumpToDraft(ref) {
+  const num = ref.slice(S.ref.short.length + 1);
+  showWork(); setTab("t-draft");
+  const pdf = await loadPDF();
+  if (!pdf) return;
+  const want = "(" + num + ")";
+  for (const pg of pdf.pages) {
+    if (!pg.items) pg.items = (await pg.page.getTextContent()).items.filter((x) => x.str !== undefined);
+    const it = pg.items;
+    for (let k = 0; k < it.length; k++) {
+      let joined = "";
+      for (let j = k; j < Math.min(k + 4, it.length); j++) {
+        joined += it[j].str.replace(/\s+/g, "");
+        if (joined === want) return markPDF(pg, it[k]);
+        if (!want.startsWith(joined)) break;
+      }
+    }
+  }
+  banner(`Couldn't find equation ${want} in the draft's text. Scroll to it by hand.`); setTimeout(() => banner(""), 5000);
+}
+function markPDF(pg, item) {
+  const wrap = $("pdfwrap"), c = pg.canvas;
+  const [x, y] = pg.viewport.convertToViewportPoint(item.transform[4], item.transform[5]);
+  const ratio = c.clientHeight / c.height;
+  const h = Math.max(10, Math.abs(item.transform[3]) * pg.viewport.scale * ratio);
+  const yc = y * ratio; // baseline of the equation number, in CSS pixels within the canvas
+  const band = Math.max(h * 3.2, 44);
+  wrap.querySelectorAll(".pdfmark").forEach((e) => e.remove());
+  const mk = document.createElement("div"); mk.className = "pdfmark";
+  mk.style.left = c.offsetLeft - 4 + "px"; mk.style.width = c.clientWidth + 8 + "px";
+  mk.style.top = c.offsetTop + yc - band / 2 - h / 3 + "px"; mk.style.height = band + "px";
+  wrap.appendChild(mk);
+  wrap.scrollTo({ top: Math.max(0, c.offsetTop + yc - wrap.clientHeight / 3), behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+$("thread").addEventListener("click", (e) => {
+  const a = e.target.closest('a[href^="#"]');
+  if (!a) return;
+  e.preventDefault();
+  const target = decodeURIComponent(a.getAttribute("href").slice(1)).replace(/^\((.*)\)$/, "$1");
+  if (isDraftRef(target)) jumpToDraft(target); else jumpToEq(target);
+});
+
+/* ---------- sketch editing and saving ---------- */
+function setStamp() {
+  const st = $("stamp");
+  const sk = S.sketch;
+  const unsaved = $("tex").value !== S.savedTex;
+  const unsynced = sk.updatedAt && (!sk.syncedAt || sk.updatedAt > sk.syncedAt);
+  st.classList.toggle("warn", !!unsynced && !unsaved);
+  if (!S.db) { st.textContent = "Not saving: open this page inside Claude"; return; }
+  if (unsaved) { st.textContent = "Saving…"; return; }
+  st.textContent = sk.syncedAt ? (unsynced ? "Edited since the last sync to main.tex (" + when(sk.syncedAt) + ")" : "In sync with main.tex · " + when(sk.syncedAt)) : (sk.tex ? "Saved here · not yet synced to main.tex" : "No sketch yet");
+  st.title = "Claude Code copies this sketch to model/main.tex when you ask it to sync.";
+}
+$("tex").addEventListener("input", () => {
+  clearTimeout(pvTimer); pvTimer = setTimeout(renderPreview, 350);
+  clearTimeout(S.dirtyTimer); S.dirtyTimer = setTimeout(saveSketch, 1500);
+  setStamp();
+});
+$("tex").addEventListener("keydown", (e) => {
+  if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); document.execCommand("insertText", false, "  "); }
+  if (e.key === "s" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); clearTimeout(S.dirtyTimer); saveSketch(); }
+});
+function saveSketch() {
+  const tex = $("tex").value;
+  if (!S.db || tex === S.savedTex) { setStamp(); return; }
+  const now = Date.now();
+  S.saving = S.saving.then(() => S.db.doc("model/sketch").set({ tex, updatedAt: now, syncedAt: S.sketch.syncedAt || 0 }))
+    .then(() => { S.savedTex = tex; S.sketch = { ...S.sketch, tex, updatedAt: now }; setStamp(); })
+    .catch((e) => { banner("The sketch didn't save (" + (e && e.code || "error") + "). Your text stays here; keep this tab open and try ⌘S."); setStamp(); });
+}
+function applyRemoteSketch(d) {
+  S.sketch = { tex: d.tex || "", updatedAt: d.updatedAt || 0, syncedAt: d.syncedAt || 0 };
+  const ta = $("tex");
+  if (ta.value === S.savedTex) { // no unsaved local typing: take the stored version
+    if (ta.value !== S.sketch.tex) { const top = ta.scrollTop; ta.value = S.sketch.tex; ta.scrollTop = top; renderPreview(); }
+    S.savedTex = S.sketch.tex;
+  } else if (S.sketch.tex !== ta.value) {
+    banner("The sketch changed elsewhere (probably a sync) while you were typing. Your typing is kept and will overwrite it when it saves.");
+  }
+  const t = S.sketch.tex.match(/\\title\{([^}\\]*)/);
+  $("what").textContent = t ? t[1].trim() : "Guided build";
+  setStamp();
+}
+$("quoteBtn").onclick = () => {
+  const ta = $("tex");
+  let sel = ta.value.slice(ta.selectionStart, ta.selectionEnd);
+  if (!sel.trim()) { const sp = String(window.getSelection() || ""); sel = sp; }
+  if (!sel.trim()) { banner("Select some lines in the source (or text on the page) first, then press Quote in chat."); setTimeout(() => banner(""), 4000); return; }
+  const q = sel.trim().split("\n").map((l) => "> " + l).join("\n");
+  const ask = $("ask");
+  ask.value = (ask.value ? ask.value.replace(/\s*$/, "\n\n") : "") + q + "\n\n";
+  showChat(); ask.focus(); ask.setSelectionRange(ask.value.length, ask.value.length);
+};
+
+/* ---------- export: the sketch as main.tex ----------
+   The page may only offer certain file types, and .tex isn't one of them, so main.tex goes out inside a .zip
+   (one file, stored uncompressed). If downloads aren't available here, the source is copied to the clipboard instead. */
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xffffffff; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function zipOne(name, text) {
+  const enc = new TextEncoder(), nm = enc.encode(name), data = enc.encode(text), crc = crc32(data), n = data.length;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const lh = new DataView(new ArrayBuffer(30)), cd = new DataView(new ArrayBuffer(46)), end = new DataView(new ArrayBuffer(22));
+  const put = (v) => ([o, x, w]) => (w === 4 ? v.setUint32(o, x, true) : v.setUint16(o, x, true));
+  [[0, 0x04034b50, 4], [4, 20], [6, 0x0800], [10, time], [12, date], [14, crc, 4], [18, n, 4], [22, n, 4], [26, nm.length]].forEach(put(lh));
+  [[0, 0x02014b50, 4], [4, 20], [6, 20], [8, 0x0800], [12, time], [14, date], [16, crc, 4], [20, n, 4], [24, n, 4], [28, nm.length]].forEach(put(cd));
+  [[0, 0x06054b50, 4], [8, 1], [10, 1], [12, 46 + nm.length, 4], [16, 30 + nm.length + n, 4]].forEach(put(end));
+  return new Blob([lh, nm, data, cd, nm, end]);
+}
+function exportName() {
+  const t = ($("what").textContent || "").trim();
+  const slug = t && t !== "Guided build" ? t.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) : "";
+  const d = new Date(), ymd = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return (slug || "model") + "-" + ymd + ".zip";
+}
+function flashBanner(t, ms) { banner(t); setTimeout(() => { if ($("banner").textContent === t) banner(""); }, ms || 5000); }
+async function copyTex(tex, why) {
+  try { await navigator.clipboard.writeText(tex); flashBanner(why + " main.tex was copied to the clipboard instead."); }
+  catch { flashBanner(why + " Copying failed too: select all in the source (⌘A) and copy it by hand.", 7000); }
+}
+$("exportBtn").onclick = async () => {
+  const tex = $("tex").value;
+  if (!tex.trim()) { flashBanner("The sketch is empty, so there's nothing to export."); return; }
+  if (tex !== S.savedTex) { clearTimeout(S.dirtyTimer); saveSketch(); }
+  if (!S.dl) return copyTex(tex, "Downloads aren't available in this view.");
+  const b = $("exportBtn"); b.disabled = true;
+  try { await S.dl.save({ filename: exportName(), data: zipOne("main.tex", tex) }); }
+  catch (e) {
+    const c = e && e.code;
+    if (c === "declined") {}
+    else if (c === "rate_limited") flashBanner("A download prompt is already open. Finish it, then try again.");
+    else await copyTex(tex, "The download didn't go through.");
+  }
+  finally { b.disabled = false; }
+};
+
+/* ---------- view controls ---------- */
+const VIEWS = { vSplit: "", vSource: "v-source", vPreview: "v-preview" };
+function setView(id) {
+  const sk = $("sketch");
+  sk.classList.remove("v-source", "v-preview");
+  if (VIEWS[id]) sk.classList.add(VIEWS[id]);
+  for (const k of Object.keys(VIEWS)) $(k).setAttribute("aria-pressed", String(k === id));
+  LS.set("mb.view", id);
+}
+for (const k of Object.keys(VIEWS)) $(k).onclick = () => setView(k);
+setView(LS.get("mb.view", "vSplit") in VIEWS ? LS.get("mb.view", "vSplit") : "vSplit");
+$("outlineBtn").onclick = () => { $("sketch").classList.toggle("no-outline"); LS.set("mb.outline", !$("sketch").classList.contains("no-outline")); };
+if (LS.get("mb.outline", true) === false) $("sketch").classList.add("no-outline");
+const TABS = { "t-sketch": "p-sketch", "t-draft": "p-draft", "t-prog": "p-prog" };
+function setTab(id) {
+  for (const [t, p] of Object.entries(TABS)) { $(t).setAttribute("aria-selected", String(t === id)); $(p).hidden = t !== id; }
+  $("sketchTools").hidden = id !== "t-sketch";
+  if (id === "t-draft") loadPDF();
+  LS.set("mb.tab", id);
+}
+for (const t of Object.keys(TABS)) $(t).onclick = () => setTab(t);
+const LAYOUTS = { lChat: "only-chat", lBoth: "", lWork: "only-work" };
+function setLayout(id) {
+  const main = $("main");
+  main.classList.remove("only-chat", "only-work");
+  if (LAYOUTS[id]) main.classList.add(LAYOUTS[id]);
+  for (const k of Object.keys(LAYOUTS)) $(k).setAttribute("aria-pressed", String(k === id));
+  LS.set("mb.layout", id);
+}
+for (const k of Object.keys(LAYOUTS)) $(k).onclick = () => setLayout(k);
+setLayout(LS.get("mb.layout", "lBoth") in LAYOUTS ? LS.get("mb.layout", "lBoth") : "lBoth");
+// narrow panel: one panel at a time via show-work; a wide-layout choice must not hide the panel asked for
+function showChat() { $("main").classList.remove("show-work"); if ($("main").classList.contains("only-work")) setLayout("lBoth"); }
+$("mChat").onclick = showChat;
+$("mWork").onclick = () => { if ($("main").classList.contains("only-chat")) setLayout("lBoth"); $("main").classList.add("show-work"); };
+
+/* ---------- source draft PDF ---------- */
+function loadPDF() { // resolves to { pages: [{ page, canvas, viewport }] }, or null when the draft can't be shown
+  if (S.pdfP) return S.pdfP;
+  const wrap = $("pdfwrap");
+  if (!S.ref.pdfAssetId) { wrap.innerHTML = '<p class="pdfmsg">The source draft isn\'t attached yet. Claude Code uploads it when it sets up Model Builder.</p>'; return Promise.resolve(null); }
+  if (!window.pdfjsLib) { wrap.innerHTML = '<p class="pdfmsg">The PDF reader didn\'t load. Check your connection and reload.</p>'; return Promise.resolve(null); }
+  wrap.innerHTML = '<p class="pdfmsg">Opening the draft…</p>';
+  S.pdfP = (async () => {
+    try {
+      const r = await fetch("/_blob/" + S.ref.pdfAssetId);
+      if (!r.ok) throw new Error("the file is missing (" + r.status + ")");
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await r.arrayBuffer()), isEvalSupported: false }).promise;
+      wrap.innerHTML = "";
+      const width = Math.min(wrap.clientWidth - 32, 900);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      const pages = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const vp = page.getViewport({ scale: (width / page.getViewport({ scale: 1 }).width) * dpr });
+        const c = document.createElement("canvas");
+        c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+        c.style.width = Math.floor(vp.width / dpr) + "px";
+        c.setAttribute("aria-label", "Source draft, page " + i);
+        wrap.appendChild(c);
+        await page.render({ canvasContext: c.getContext("2d"), viewport: vp }).promise;
+        pages.push({ page, canvas: c, viewport: vp });
+      }
+      return { pages };
+    } catch (e) {
+      S.pdfP = null;
+      wrap.innerHTML = `<p class="pdfmsg">The draft didn't open: ${esc(e.message || e)}.</p>`;
+      return null;
+    }
+  })();
+  return S.pdfP;
+}
+
+/* ---------- progress ---------- */
+function renderProgress() {
+  const el = $("progOut");
+  if (!S.progress.trim()) { el.className = "page emptypage"; el.innerHTML = "<p>The progress file appears here after the first sync.</p>"; return; }
+  el.className = "page";
+  renderMD(el, S.progress);
+}
+
+/* ---------- build tracker ----------
+   One entry per block of the build order (model/ref order), each todo / draft / settled, kept in model/status.
+   The tutor updates it with set_progress; the learner can click a block in the Progress tab to change it. */
+/* check:begin */
+const DEFAULT_ORDER = "Purpose → Environment → Agents and preferences → Technology and markets → Problems and FOCs → Aggregation and clearing → Equilibrium → Steady state → The experiment";
+const STATES = ["todo", "draft", "settled"];
+const STATE_LABEL = { todo: "Not started", draft: "Drafted", settled: "Settled" };
+function blocks() { return String(S.ref.order || DEFAULT_ORDER).split(/\s*(?:→|->)\s*/).map((s) => s.trim()).filter(Boolean); }
+function pct() {
+  const b = blocks(); if (!b.length) return 0;
+  const x = b.reduce((n, k) => n + (S.status[k] === "settled" ? 1 : S.status[k] === "draft" ? 0.5 : 0), 0);
+  return Math.round((100 * x) / b.length);
+}
+function currentBlock() { return blocks().find((k) => S.status[k] !== "settled"); }
+/* check:end */
+function statusFromDoc(d) { const out = {}; for (const r of (d && Array.isArray(d.blocks) ? d.blocks : [])) if (r && r.name && STATES.includes(r.state)) out[r.name] = r.state; return out; }
+function saveStatus() {
+  if (!S.db) return;
+  const list = Object.entries(S.status).map(([name, state]) => ({ name, state }));
+  S.db.doc("model/status").set({ blocks: list, t: Date.now() }).catch(() => { banner("The progress tracker didn't save. Reload and try again."); setTimeout(() => banner(""), 5000); });
+}
+function renderStatus() {
+  const bar = $("pbar"), out = $("blocksOut");
+  bar.hidden = !S.statusLoaded;
+  if (!S.statusLoaded) { out.className = "page emptypage"; out.innerHTML = "<p>The build tracker appears here once the page has loaded.</p>"; return; }
+  const b = blocks(), p = pct(), cur = currentBlock();
+  const nSettled = b.filter((k) => S.status[k] === "settled").length;
+  const segs = $("psegs"); segs.innerHTML = "";
+  for (const k of b) { const s = document.createElement("span"); s.className = "pseg " + (S.status[k] || "todo") + (k === cur ? " current" : ""); segs.appendChild(s); }
+  $("pct").textContent = p + "%";
+  bar.title = `Build ${p}%: ${nSettled} of ${b.length} blocks settled` + (cur ? `. Now: ${cur}` : ". All blocks settled") + ". Click for the list.";
+  bar.setAttribute("aria-label", `Build progress ${p} percent. Open the block list`);
+  out.className = "page";
+  out.innerHTML = `<h1>Build ${p}%</h1><div class="pbig"><span style="width:${p}%"></span></div><p class="pnote">${nSettled} of ${b.length} blocks settled. A settled block counts 1, a drafted block ½. The tutor updates this as you go; click a block to change it yourself.</p>`;
+  const list = document.createElement("div"); list.className = "blist";
+  b.forEach((k, i) => {
+    const st = S.status[k] || "todo";
+    const btn = document.createElement("button");
+    btn.className = "brow " + st + (k === cur ? " current" : "");
+    btn.innerHTML = `<span class="bico" aria-hidden="true">${st === "settled" ? "●" : st === "draft" ? "◐" : "○"}</span><span class="bname">${i + 1}. ${esc(k)}</span><span class="bst">${STATE_LABEL[st]}${k === cur ? " · current" : ""}</span>`;
+    btn.title = "Click to change: not started → drafted → settled";
+    btn.onclick = () => { S.status = { ...S.status, [k]: STATES[(STATES.indexOf(st) + 1) % STATES.length] }; saveStatus(); renderStatus(); updateCtxSize(); };
+    list.appendChild(btn);
+  });
+  out.appendChild(list);
+}
+$("pbar").onclick = () => { showWork(); setTab("t-prog"); };
+
+/* ---------- tutor ---------- */
+/* check:begin */
+// The tutor's rules: model/ref.rules when the user stored their own, else these. {{learner}} ({{Learner}} at the start
+// of a sentence), {{brief}}, {{order}} and {{short}} are filled in from model/ref.
+const GENERIC_RULES = `You are the tutor in {{learner}}'s guided build of a macroeconomic model. {{Learner}}'s goal is to learn to build models themselves; the process matters as much as the result. Their background and level, when known, are in the project brief.
+
+The project: {{brief}}
+
+Pace (this comes first; a build that crawls and gets caught in the weeds is the usual failure):
+- Work top-down. Get the whole model onto the page as a skeleton before perfecting any block: the environment, each agent's problem, prices and market clearing, the equilibrium definition, then the experiment. A block can stand as a rough draft and be refined later. Never polish one block while later blocks are still empty.
+- The build order sets the next step. The progress file's next step, open items in the sketch's comments and Tutor notes are a backlog for after the skeleton is closed. Where they conflict with these rules, these rules win.
+- A step is a block, not an equation. Ask {{learner}} for a whole block at once (e.g. all first-order conditions of one agent) and check it in one pass.
+- When the build extends a source draft, take the draft's assumptions and results as given and re-derive only what the extension changes. For mechanical blocks, ask {{learner}} to write the specialized block in one go, or, if they prefer, file it into the sketch yourself; then move on. No hint-by-hint guidance for substitutions.
+- Spend hint-by-hint effort only where the model says something new: the economics that the source draft or standard results don't already state, and the experiment.
+- A condition may stand in endogenous objects for now (a cutoff, a price, a value function). Restating it in parameters only is a refinement for after the skeleton is closed, unless a later block needs it sooner.
+- Park side issues instead of resolving them: generality, corner cases, existence and uniqueness, whether one assumption implies another, inconsistencies in the source draft, notation choices. Write them in one line starting "Parked:" and keep going. If a point hasn't resolved after two exchanges, park it.
+- {{Learner}} can always say "park it" or "move on": do so at once.
+
+How you work (guided build):
+- {{Learner}} does the derivations that carry the mechanism. You set up each step with ONE hint or ONE narrowing question, then check what they write.
+- Keep momentum. Most of a build is standard machinery (Bellman equations, first-order conditions, market clearing, laws of motion). When their step is right, confirm it in one line and move to the next step. Stop them only for an error that changes a result.
+- Take regularity conditions as given and never make them a step: positive parameters where the model needs them, discount factors in (0,1), the standard assumptions on functional forms, interior solutions, finite integrals, and anything the source draft already assumes. Where the draft is silent on a sign, the standard sign holds, and if {{learner}} relies on it, accept it. Don't ask {{learner}} to state, label or justify them. If one actually decides a result, say so in one sentence at the point where it bites.
+- Notation slips, typos, a wrong label or reason on a right result, and harmless departures from the source draft are not steps. Correct them in a few words yourself (naming what a quantity {{learner}} already derived is not stating a result) or fix them when filing into the sketch, and carry on.
+- Routine algebra (substituting, rearranging, collecting terms) is not where the learning is. If {{learner}} is stuck on it, or asks, just show it.
+- Ask for a plan first only before a genuinely long argument (an existence or uniqueness proof, a comparative static with several channels). Not for a value function, a FOC, a market-clearing condition or a substitution.
+- End every reply with exactly one question or one instruction. Never a list of questions.
+- A hint narrows the search without containing the answer.
+- Don't state a result that carries the mechanism (a cutoff, a sign, a comparative static) before {{learner}} derives it, and don't preview what the model will deliver. If they explicitly ask for the answer, give it: they decide.
+- When you check their work, point to the first place it goes wrong and say why. Do not rewrite all of it.
+- If they repeat the same wrong idea or say they are stuck, give a foothold (do the first step, or name the missing condition) and hand the pen back.
+- Use the source draft's notation exactly and cite its equations as the project brief says (e.g. ({{short}}.13)). Write math in LaTeX: $...$ inline, $$...$$ displayed.
+- Equation references are clickable for {{learner}}. Write a draft equation as plain text ({{short}}.13), outside math; it links itself. Refer to an equation in {{learner}}'s sketch with a markdown link to its \\label key, showing its number: [(3)](#eq:bellman). If it has no label, link the number: [(3)](#3). Use the numbers and keys from the equation list below; never put these references inside $...$.
+- Craft rules, applied with judgment: the smallest model that produces the mechanism comes first; label a modelling choice critical or convenience only when it is substantive (the market structure, price setting, entry, what is fixed and what is endogenous), never a regularity condition; when a parameter that will be calibrated first appears, name its identifying moment in one line, without quizzing.
+- When a block is settled, say so in one line starting "Settled:", file it into the sketch yourself, and make your one instruction the next block in the build order.
+- Keep the build tracker current with set_progress. Mark a block draft when a rough version of it first appears in the sketch, and settled in the same reply where you write "Settled:". If the tracker below disagrees with the sketch or the progress file, fix it. Don't mention the tracker or the percentage in your reply: {{learner}} sees the bar.
+- You can change {{learner}}'s sketch (main.tex) with the edit_sketch tool: exact find-and-replace, each old_text copied verbatim and matching exactly once. Use write_sketch only when the sketch is empty or {{learner}} asks for a full rewrite. The sketch shown below is as of {{learner}}'s message; call read_sketch if you need it fresh. Edit when a block is settled (filing what {{learner}} derived) or when {{learner}} asks: fixing LaTeX, restructuring, renaming, adding labels. Don't write a result into the sketch that {{learner}} hasn't derived unless they ask you to. Match the sketch's notation, macros and style, and keep existing \\label keys. Edits save at once and {{learner}} can undo them; after editing, say in one line what you changed.
+- Be brief: usually under 120 words, longer only for a displayed derivation or when {{learner}} asks. Short, plain sentences. No preamble, no praise unless something specific earned it.
+
+Build order: {{order}}.`;
+const L = () => S.ref.learner || "the learner";
+const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+function fill(text) {
+  const v = { learner: L(), Learner: cap1(L()), brief: S.ref.brief || `(no brief stored; ask ${L()} what model they are building)`,
+    order: S.ref.order || DEFAULT_ORDER, short: S.ref.short || "Draft" };
+  return String(text).replace(/\{\{(learner|Learner|brief|order|short)\}\}/g, (_, k) => v[k]);
+}
+const RULES = () => fill(S.ref.rules || GENERIC_RULES);
+function contextBlock() {
+  const cap = (s, n) => (s.length > n ? s.slice(0, n) + "\n[… cut for length]" : s);
+  return `${RULES()}
+
+${S.handoff ? `Where the previous chat left off (${L()} cleared it; the tutor wrote this note just before):
+<handoff>
+${cap(S.handoff, 4000)}
+</handoff>
+
+` : ""}Where the build stands (PROGRESS.md, as of the last sync):
+<progress>
+${cap(S.progress || "(not synced yet)", 12000)}
+</progress>
+
+Build tracker (${L()} sees it as a progress bar, now ${pct()}%; a settled block counts 1, a drafted block ½):
+<tracker>
+${blocks().map((k) => `${k}: ${S.status[k] || "todo"}`).join("\n")}
+</tracker>
+
+Numbered and labelled equations in ${L()}'s sketch (number, \\label keys, source line), as they render on their page:
+<equations>
+${eqListForTutor()}
+</equations>
+
+${cap1(L())}'s sketch right now (main.tex, live from their editor):
+<sketch>
+${cap($("tex").value || "(empty)", 40000)}
+</sketch>
+
+The source draft (${S.ref.title || "reference"}), transcribed equation by equation (your reference; trust it over memory). Lines marked "Tutor note" are for you only:
+<reference>
+${cap(S.ref.text || "(not attached)", 40000)}
+</reference>
+
+The conversation follows. Reply to ${L()}'s last message.`;
+}
+function buildInput() {
+  let msgs = S.chat.filter((m) => m.content && (m.role === "user" || m.role === "assistant")).slice(-40);
+  while (msgs.length && msgs[0].role !== "user") msgs = msgs.slice(1);
+  const turns = [];
+  for (const m of msgs) {
+    const last = turns[turns.length - 1];
+    const content = m.content + (m.edits ? `\n\n[You edited the sketch: ${(m.editNotes || []).join("; ") || m.edits + " change(s)"}${m.undone ? `. ${cap1(L())} undid this edit.` : ""}]` : "");
+    if (last && last.role === m.role) last.content += "\n\n" + content;
+    else turns.push({ role: m.role, content });
+  }
+  if (!turns.length) return null;
+  turns[0] = { role: "user", content: contextBlock() + "\n\n---\n\n" + turns[0].content };
+  return turns;
+}
+/* check:end */
+/* ---------- the tutor's tools: reading and editing the sketch ----------
+   Edits go into the editor, re-render the page and save at once, like the learner's typing. Each reply that edits keeps
+   a before/after snapshot, so Undo can restore the sketch while nothing has changed since. */
+function setSketchText(tex) {
+  const ta = $("tex"), top = ta.scrollTop;
+  ta.value = tex; ta.scrollTop = top;
+  clearTimeout(pvTimer); renderPreview();
+  clearTimeout(S.dirtyTimer); saveSketch();
+}
+function firstDiffLine(a, b) { let i = 0; const n = Math.min(a.length, b.length); while (i < n && a[i] === b[i]) i++; return a.slice(0, i).split("\n").length - 1; }
+function countOcc(hay, needle) { let n = 0, i = 0; while ((i = hay.indexOf(needle, i)) >= 0) { n++; i += needle.length; } return n; }
+function sketchTools(turn) {
+  const apply = (before, after, note) => {
+    if (after === before) return;
+    if (turn.before === null) turn.before = before;
+    turn.after = after; turn.count++; turn.notes.push(note);
+    turn.line = firstDiffLine(turn.before, after);
+    setSketchText(after);
+  };
+  return [
+    {
+      name: "set_progress",
+      description: `Update the build tracker ${L()} sees as a progress bar. One entry per block of the build order: 'draft' when a rough version is in the sketch, 'settled' when you declare the block Settled, 'todo' to reset.`,
+      inputSchema: { type: "object", properties: {
+        updates: { type: "array", minItems: 1, items: { type: "object", properties: {
+          block: { type: "string", enum: blocks(), description: "A block name from the build order, exactly." },
+          state: { type: "string", enum: STATES },
+        }, required: ["block", "state"] } },
+      }, required: ["updates"] },
+      execute: ({ updates }) => {
+        const names = blocks(), byLower = new Map(names.map((k) => [k.toLowerCase(), k]));
+        if (!Array.isArray(updates) || !updates.length) throw new Error("updates must be a non-empty array. Nothing was changed.");
+        const next = { ...S.status };
+        for (const u of updates) {
+          const k = byLower.get(String((u && u.block) || "").trim().toLowerCase());
+          if (!k) throw new Error(`Unknown block "${u && u.block}". Blocks: ${names.join(", ")}. Nothing was changed.`);
+          if (!STATES.includes(u.state)) throw new Error(`state must be one of ${STATES.join(", ")}. Nothing was changed.`);
+          next[k] = u.state;
+        }
+        S.status = next; saveStatus(); renderStatus();
+        return { ok: true, percent: pct() };
+      },
+    },
+    {
+      name: "read_sketch",
+      description: `Return ${L()}'s sketch (main.tex) exactly as it is now, with the total line count.`,
+      inputSchema: { type: "object", properties: {} },
+      execute: () => { const tex = $("tex").value; return { tex, lines: tex.split("\n").length }; },
+    },
+    {
+      name: "edit_sketch",
+      description: `Change ${L()}'s sketch (main.tex) by exact find-and-replace. Edits apply in order and all-or-nothing. Each old_text must be copied verbatim from the current sketch and occur exactly once; include neighbouring lines to make it unique. To insert, include an anchor line in old_text and repeat it in new_text. To delete, use an empty new_text.`,
+      inputSchema: {
+        type: "object",
+        properties: {
+          edits: { type: "array", minItems: 1, items: { type: "object", properties: {
+            old_text: { type: "string", description: "Exact text to replace; must occur exactly once." },
+            new_text: { type: "string", description: "Replacement text." },
+          }, required: ["old_text", "new_text"] } },
+          summary: { type: "string", description: `A few words on what this changes, shown to ${L()} (e.g. 'added the firm's FOC to §3').` },
+        },
+        required: ["edits", "summary"],
+      },
+      execute: ({ edits, summary }) => {
+        const before = $("tex").value; let tex = before;
+        if (!Array.isArray(edits) || !edits.length) throw new Error("edits must be a non-empty array. Nothing was changed.");
+        edits.forEach((e, k) => {
+          const old = e && e.old_text;
+          if (typeof old !== "string" || !old) throw new Error(`Edit ${k + 1}: old_text is empty. Nothing was changed.`);
+          const n = countOcc(tex, old);
+          if (n !== 1) throw new Error(`Edit ${k + 1}: old_text occurs ${n} times; it must occur exactly once. Call read_sketch, copy the text verbatim and add neighbouring lines to make it unique. Nothing was changed.`);
+          tex = tex.replace(old, () => String(e.new_text ?? ""));
+        });
+        apply(before, tex, String(summary || "edited").slice(0, 140));
+        return { ok: true, applied: edits.length, lines: tex.split("\n").length };
+      },
+    },
+    {
+      name: "write_sketch",
+      description: `Replace the whole sketch (main.tex). Use only when the sketch is empty or ${L()} asks for a full rewrite; otherwise use edit_sketch.`,
+      inputSchema: { type: "object", properties: {
+        tex: { type: "string", description: "The complete new main.tex." },
+        summary: { type: "string", description: `A few words on what this is, shown to ${L()}.` },
+      }, required: ["tex", "summary"] },
+      execute: ({ tex, summary }) => {
+        if (typeof tex !== "string" || !tex.trim()) throw new Error("tex is empty. Nothing was changed.");
+        apply($("tex").value, tex, String(summary || "rewrote the sketch").slice(0, 140));
+        return { ok: true, lines: tex.split("\n").length };
+      },
+    },
+  ];
+}
+function showSketchLine(line) {
+  showWork(); setTab("t-sketch");
+  if ($("sketch").classList.contains("v-preview")) setView("vSplit");
+  const ta = $("tex"), lines = ta.value.split("\n");
+  line = Math.min(line, lines.length - 1);
+  const pos = lines.slice(0, line).reduce((n, l) => n + l.length + 1, 0);
+  ta.focus({ preventScroll: true });
+  ta.setSelectionRange(pos, pos + (lines[line] || "").length);
+  const lh = parseFloat(getComputedStyle(ta).lineHeight) || 20;
+  ta.scrollTop = Math.max(0, line * lh - ta.clientHeight / 3);
+}
+function editNote(m) {
+  const d = document.createElement("div"); d.className = "editnote";
+  const what = (m.editNotes && m.editNotes.length) ? m.editNotes.join("; ") : `${m.edits} change${m.edits > 1 ? "s" : ""}`;
+  const t = document.createElement("span"); t.textContent = (m.undone ? "Edit undone: " : "Edited the sketch: ") + what;
+  d.append(t);
+  const show = document.createElement("button"); show.className = "btn ghost"; show.textContent = "Show";
+  show.onclick = () => showSketchLine(m.editLine || 0);
+  d.append(show);
+  const u = S.undo[m.id];
+  if (u && !m.undone) {
+    const b = document.createElement("button"); b.className = "btn ghost"; b.textContent = "Undo";
+    b.onclick = () => {
+      if ($("tex").value !== u.after) { banner("The sketch has changed since this edit, so it can't be undone in one step. Ask the tutor to revert it, or use ⌘Z in the source."); setTimeout(() => banner(""), 6000); return; }
+      setSketchText(u.before); delete S.undo[m.id]; m.undone = true; storeMsg(m); renderThread();
+    };
+    d.append(b);
+  }
+  return d;
+}
+
+function errText(code) {
+  switch (code) {
+    case "not_granted": case "sampling_disabled": case "not_declared": case "capability_disabled": case "capability_removed":
+      return "The tutor isn't allowed on this page. Reload and choose Allow when asked.";
+    case "rate_limited": return "Too many requests at once, or you've hit your usage limit. Wait a bit, then press Retry.";
+    case "session_expired": return "You've been signed out. Sign in again, then press Retry.";
+    case "prompt_too_large": return "The sketch and history are too long to send. Ask Claude Code to sync and trim the chat.";
+    case "cancelled": return "Stopped.";
+    default: return "Something went wrong on the way. Press Retry.";
+  }
+}
+function renderThread() {
+  const th = $("thread");
+  th.innerHTML = "";
+  if (!S.chat.length && !S.pending) {
+    const w = document.createElement("div"); w.className = "welcome";
+    w.innerHTML = "<b>Guided build.</b> You write each step; the tutor gives one hint or one question at a time and checks your work. It sees your sketch, the source draft and the progress file on every message, and can edit the sketch when you ask (each edit can be undone). Write math in LaTeX with $…$.";
+    th.appendChild(w);
+  }
+  if (S.handoff) {
+    const h = document.createElement("div"); h.className = "handoff";
+    const top = document.createElement("div"); top.className = "hhead";
+    const t = document.createElement("span"); t.textContent = "Carried over from the cleared chat";
+    const x = document.createElement("button"); x.className = "btn ghost"; x.textContent = "Dismiss"; x.title = "Drop this note; the tutor stops seeing it";
+    x.onclick = () => { S.handoff = ""; if (S.db) S.db.doc("model/handoff").set({ md: "", t: Date.now() }).catch(() => {}); renderThread(); };
+    top.append(t, x);
+    const body = document.createElement("div"); body.className = "msg tutor";
+    h.append(top, body); th.appendChild(h);
+    renderMD(body, S.handoff, true);
+  }
+  S.chat.forEach((m) => th.appendChild(msgEl(m)));
+  if (S.pending) {
+    const d = document.createElement("div"); d.className = "msg tutor";
+    if (S.streaming) renderMD(d, S.streaming, true);
+    const st = document.createElement("div"); st.className = "thinking"; st.textContent = S.streaming ? "Writing…" : "Thinking… careful answers can take up to a minute.";
+    th.append(d, st);
+    S.liveEl = d;
+  } else if (S.error) {
+    const e = document.createElement("div"); e.className = "err"; e.textContent = S.error; th.appendChild(e);
+  }
+  if (S.clearing) { const c = document.createElement("div"); c.className = "thinking"; c.textContent = "Writing a short note on where you are, then clearing…"; th.appendChild(c); }
+  const lastUser = S.chat.length && S.chat[S.chat.length - 1].role === "user";
+  $("stopBtn").hidden = !S.pending;
+  $("retryBtn").hidden = S.pending || !lastUser || !S.sample;
+  $("sendBtn").disabled = S.pending || !S.sample || S.clearing;
+  $("clearBtn").disabled = S.pending || S.clearing || !S.chat.length;
+  updateCtxSize();
+  th.scrollTop = th.scrollHeight;
+}
+function msgEl(m) {
+  const d = document.createElement("div");
+  if (m.role === "user") {
+    d.className = "msg you";
+    d.textContent = m.content;
+    finishChat(d);
+  } else {
+    d.className = "msg tutor";
+    renderMD(d, m.content, true);
+    if (m.edits) d.appendChild(editNote(m));
+    if (m.model || m.pct != null) {
+      const by = document.createElement("div"); by.className = "by";
+      const pr = m.pct == null ? "" : (m.pctFrom != null && m.pctFrom !== m.pct ? `build ${m.pctFrom}% → ${m.pct}%` : `build ${m.pct}%`);
+      by.textContent = [m.model, pr].filter(Boolean).join(" · ");
+      d.appendChild(by);
+    }
+  }
+  return d;
+}
+function storeMsg(m) {
+  if (!S.db) return;
+  S.db.collection("chat").doc(m.id).set({ role: m.role, content: m.content, t: m.t, ...(m.model ? { model: m.model } : {}), ...(m.pct != null ? { pct: m.pct, pctFrom: m.pctFrom ?? m.pct } : {}),
+    ...(m.edits ? { edits: m.edits, editLine: m.editLine || 0, editNotes: m.editNotes || [], undone: !!m.undone } : {}) })
+    .catch((e) => banner(e && e.code === "quota_exceeded" ? "Storage is full; this message wasn't saved." : "A message didn't save. It stays on screen until you reload."));
+}
+function send() {
+  const ta = $("ask");
+  const text = ta.value.trim();
+  if (!text || S.pending || S.clearing || !S.sample) return;
+  ta.value = "";
+  const m = { id: "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), role: "user", content: text, t: Date.now() };
+  S.chat.push(m); storeMsg(m);
+  if ($("tex").value !== S.savedTex) { clearTimeout(S.dirtyTimer); saveSketch(); }
+  runTutor();
+}
+async function runTutor() {
+  if (!S.sample) return;
+  const input = buildInput();
+  if (!input) return;
+  S.pending = true; S.error = null; S.streaming = ""; S.ctl = new AbortController();
+  renderThread();
+  const M = MODELS[S.model] || MODELS.opus;
+  let lastTs = 0;
+  const turn = { before: null, after: null, count: 0, line: 0, notes: [] };
+  const pctBefore = S.statusLoaded ? pct() : null;
+  const withEdits = (m) => {
+    if (!turn.count) return m;
+    m.edits = turn.count; m.editLine = turn.line; m.editNotes = turn.notes.slice(0, 12);
+    S.undo[m.id] = { before: turn.before, after: turn.after };
+    return m;
+  };
+  try {
+    const res = await S.sample(input, {
+      model: M.id, modelTier: M.tier, ...(M.effort ? { effort: M.effort } : {}), cache: false, signal: S.ctl.signal, tools: sketchTools(turn),
+      onText: ({ text }) => {
+        S.streaming = text;
+        if (S.liveEl && S.liveEl.isConnected) {
+          const now = Date.now();
+          if (now - lastTs > 900) { lastTs = now; renderMD(S.liveEl, text, true); } else S.liveEl.textContent = text;
+          const st = S.liveEl.nextElementSibling; if (st) st.textContent = "Writing…";
+          const th = $("thread"); if (th.scrollHeight - th.scrollTop - th.clientHeight < 120) th.scrollTop = th.scrollHeight;
+        }
+      },
+    });
+    const by = res.modelApplied === M.id ? M.label : "Answered by another model (" + M.label + " wasn't available)";
+    const m = { id: "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), role: "assistant", model: by, t: Date.now(), ...(S.statusLoaded ? { pct: pct(), pctFrom: pctBefore } : {}),
+      content: res.text + (res.truncated ? "\n\n*(Cut short. Ask me to continue.)*" : "") };
+    withEdits(m); S.chat.push(m); storeMsg(m);
+  } catch (e) {
+    const code = e && e.code;
+    if (e && e.text && code !== "refused") {
+      const m = { id: "m" + Date.now().toString(36), role: "assistant", t: Date.now(), content: e.text + "\n\n*(" + (code === "cancelled" ? "Stopped" : "Interrupted") + " here.)*" };
+      withEdits(m); S.chat.push(m); storeMsg(m);
+    } else if (turn.count) {
+      const m = { id: "m" + Date.now().toString(36), role: "assistant", t: Date.now(), content: "*(" + (code === "cancelled" ? "Stopped" : "Interrupted") + " after editing the sketch.)*" };
+      withEdits(m); S.chat.push(m); storeMsg(m);
+      S.error = errText(code);
+    } else S.error = errText(code);
+  }
+  S.pending = false; S.streaming = ""; S.ctl = null; S.liveEl = null;
+  renderThread();
+}
+/* ---------- clearing the chat ----------
+   Before deleting, the tutor writes a short handoff note (kept in model/handoff and sent with every message after),
+   so the build carries on without the old transcript. */
+function updateCtxSize() {
+  const el = $("ctxSize"); if (!el) return;
+  let chars = 0;
+  try { const inp = buildInput(); chars = inp ? inp.reduce((n, t) => n + t.content.length, 0) : contextBlock().length; } catch { return; }
+  const k = Math.round(chars / 4 / 1000);
+  const chatChars = S.chat.reduce((n, m) => n + (m.content || "").length, 0);
+  el.textContent = `≈${k}k tokens`;
+  el.style.color = chatChars > 60000 ? "var(--danger)" : "";
+  el.title = `About ${k}k tokens go to the tutor on every message; the chat itself is about ${Math.round(chatChars / 4 / 1000)}k. Clear when replies get slow.`;
+}
+/* check:begin */
+const handoffAsk = () => `[Not from ${L()}: the page is clearing this chat to keep the context small. Write a handoff note for the tutor who continues with an empty chat. It will see the same rules, sketch, draft and progress file, but not this conversation. Cover: the block and step ${L()} is on; what they derived or agreed here that is not yet in the sketch (with the key equations in LaTeX); the open question or next instruction; anything they found hard. Under 150 words, markdown bullets, no preamble, no question to ${L()}, no tools.]`;
+/* check:end */
+let clearArmed = 0;
+$("clearBtn").onclick = () => {
+  if (S.pending || S.clearing || !S.chat.length) return;
+  const b = $("clearBtn");
+  if (Date.now() - clearArmed > 4000) {
+    clearArmed = Date.now(); b.textContent = "Clear chat? Click again";
+    setTimeout(() => { if (!S.clearing && Date.now() - clearArmed >= 4000) b.textContent = "Clear"; }, 4100);
+    return;
+  }
+  clearArmed = 0; b.textContent = "Clear";
+  clearChat();
+};
+async function clearChat() {
+  S.clearing = true; S.error = null; renderThread();
+  let note = null;
+  if (S.sample && S.chat.some((m) => m.role === "assistant")) {
+    try {
+      const input = buildInput();
+      if (input) {
+        if (input[input.length - 1].role === "user") input[input.length - 1].content += "\n\n" + handoffAsk();
+        else input.push({ role: "user", content: handoffAsk() });
+        const res = await S.sample(input, { modelTier: "quick", cache: false });
+        note = String(res.text || "").trim() || null;
+      }
+    } catch (e) { banner("The handoff note couldn't be written (" + (e && e.code || "error") + "); the chat was cleared without it."); setTimeout(() => banner(""), 6000); }
+  }
+  const ids = S.chat.map((m) => m.id);
+  if (note !== null) S.handoff = note;
+  S.chat = []; S.undo = {};
+  if (S.db) {
+    let failed = 0;
+    for (let i = 0; i < ids.length; i += 20) {
+      const r = await Promise.allSettled(ids.slice(i, i + 20).map((id) => S.db.collection("chat").doc(id).delete()));
+      failed += r.filter((x) => x.status === "rejected").length;
+    }
+    if (note !== null) await S.db.doc("model/handoff").set({ md: note, t: Date.now() }).catch(() => banner("The handoff note didn't save; it will be lost on reload."));
+    if (failed) banner(`${failed} old message${failed > 1 ? "s" : ""} couldn't be deleted and may come back on reload. Try Clear again then.`);
+  }
+  S.clearing = false;
+  renderThread();
+  $("ask").focus();
+}
+
+$("sendBtn").onclick = send;
+$("retryBtn").onclick = () => { if (!S.pending) runTutor(); };
+$("stopBtn").onclick = () => S.ctl && S.ctl.abort();
+// Enter sends; Shift+Enter is a new line. On touch keyboards (no Shift) Enter stays a new line and the Send button sends.
+const COARSE = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
+if (COARSE) $("sendHint").textContent = "";
+$("ask").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.isComposing || e.keyCode === 229) return;
+  if (e.metaKey || e.ctrlKey || (!e.shiftKey && !e.altKey && !COARSE)) { e.preventDefault(); send(); }
+});
+
+/* ---------- snippets: mk → $|$, md → $$ | $$ (chat and sketch source) ----------
+   Fires only when "mk"/"md" starts a word ("cmd" stays as typed; "mkdir" doesn't, so ⌘Z undoes an expansion). */
+const SNIPPETS = { mk: ["$", "$"], md: ["$$ ", " $$"] };
+function snippetInput(e) {
+  const ta = e.target;
+  if (e.isComposing || e.inputType !== "insertText" || (e.data !== "k" && e.data !== "d")) return;
+  const pos = ta.selectionStart;
+  if (pos !== ta.selectionEnd || pos < 2) return;
+  const key = ta.value.slice(pos - 2, pos);
+  const sn = SNIPPETS[key];
+  if (!sn) return;
+  const before = pos > 2 ? ta.value[pos - 3] : "";
+  if (before && /[A-Za-z0-9\\_$]/.test(before)) return;
+  ta.setSelectionRange(pos - 2, pos);
+  const text = sn[0] + sn[1];
+  if (!document.execCommand("insertText", false, text)) { ta.setRangeText(text, pos - 2, pos, "end"); ta.dispatchEvent(new Event("input")); }
+  const caret = pos - 2 + sn[0].length;
+  ta.setSelectionRange(caret, caret);
+}
+$("ask").addEventListener("input", snippetInput);
+$("tex").addEventListener("input", snippetInput);
+
+/* ---------- adjustable widths: chat panel and outline ---------- */
+function dragWidth(handle, { box, min, max, apply, key, reset, current }) {
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    handle.setPointerCapture(e.pointerId);
+    handle.classList.add("drag"); document.body.classList.add("resizing");
+    const left = box().getBoundingClientRect().left;
+    let w = null;
+    const move = (ev) => { w = Math.round(Math.min(max(), Math.max(min, ev.clientX - left))); apply(w); };
+    const up = () => {
+      handle.removeEventListener("pointermove", move); handle.removeEventListener("pointerup", up); handle.removeEventListener("pointercancel", up);
+      handle.classList.remove("drag"); document.body.classList.remove("resizing");
+      if (w !== null) LS.set(key, w);
+    };
+    handle.addEventListener("pointermove", move); handle.addEventListener("pointerup", up); handle.addEventListener("pointercancel", up);
+  });
+  handle.addEventListener("dblclick", () => { reset(); LS.set(key, null); });
+  handle.tabIndex = 0;
+  handle.addEventListener("keydown", (e) => { // keyboard: ← → nudge by 24px
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const cur = LS.get(key, null) ?? current();
+    const w = Math.min(max(), Math.max(min, cur + (e.key === "ArrowRight" ? 24 : -24)));
+    apply(w); LS.set(key, w);
+  });
+}
+const setChatW = (w) => $("main").style.setProperty("--chatCol", `min(${w}px, calc(100% - 320px))`);
+const resetChatW = () => $("main").style.removeProperty("--chatCol");
+dragWidth($("chatResizer"), { box: () => $("main"), min: 260, max: () => $("main").clientWidth - 320, apply: setChatW, key: "mb.chatW", reset: resetChatW, current: () => Math.round($("main").querySelector(".chat").getBoundingClientRect().width) });
+const setOutlineW = (w) => $("sketch").style.setProperty("--outlineW", w + "px");
+const resetOutlineW = () => $("sketch").style.removeProperty("--outlineW");
+dragWidth($("outlineResizer"), { box: () => $("sketch"), min: 120, max: () => Math.min(520, $("sketch").clientWidth - 240), apply: setOutlineW, key: "mb.outlineW", reset: resetOutlineW, current: () => Math.round($("outline").getBoundingClientRect().width) });
+if (LS.get("mb.chatW", null)) setChatW(LS.get("mb.chatW"));
+if (LS.get("mb.outlineW", null)) setOutlineW(LS.get("mb.outlineW"));
+
+/* check:begin */
+function readerHref(ref) { const r = String(ref.reader || ""); return r.startsWith("https://claude.ai/") ? r : null; }
+/* check:end */
+
+/* ---------- start ---------- */
+(async function start() {
+  setTab(LS.get("mb.tab", "t-sketch") in TABS ? LS.get("mb.tab", "t-sketch") : "t-sketch");
+  renderThread(); renderPreview(); renderProgress(); renderStatus();
+  const use = window.claude && window.claude.use ? (n) => window.claude.use(n).catch(() => null) : async () => null;
+  const [sample, db, dl] = await Promise.all([use("sample"), use("db"), use("downloads")]);
+  S.sample = sample; S.db = db; S.dl = dl;
+  renderThread();
+  if (!db) { setStamp(); banner("Open this page inside Claude to load and save the sketch and the chat."); return; }
+  let timer; const slow = new Promise((r) => { timer = setTimeout(() => r("timeout"), 10000); });
+  const got = await Promise.race([Promise.all([
+    db.doc("model/ref").get(), db.doc("model/progress").get(), db.collection("chat").orderBy("t").limit(1000).get(),
+    db.doc("model/handoff").get().catch(() => null), db.doc("model/status").get().catch(() => null),
+  ]).catch((e) => ({ err: e })), slow]);
+  clearTimeout(timer);
+  if (got === "timeout") { banner("Your saved sketch can't be reached right now. Try reloading in a minute."); setStamp(); return; }
+  if (got.err) { banner("The saved sketch didn't load (" + (got.err.code || "error") + ")."); setStamp(); return; }
+  const [ref, prog, chat, hand, stat] = got;
+  if (hand && hand.exists) S.handoff = String(hand.data().md || "");
+  if (ref.exists) { S.ref = { ...S.ref, ...ref.data() }; if (S.ref.short) $("t-draft").textContent = S.ref.short; const rh = readerHref(S.ref); if (rh) { $("reader").href = rh; $("reader").hidden = false; } }
+  if (prog.exists) { S.progress = String(prog.data().md || ""); renderProgress(); }
+  if (stat && stat.exists) S.status = statusFromDoc(stat.data());
+  S.statusLoaded = true; renderStatus();
+  S.chat = chat.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderThread();
+  if ($("p-draft").hidden === false) loadPDF();
+  // the sketch stays live, so a sync from Claude Code shows up without a reload
+  db.doc("model/sketch").onSnapshot((snap) => { if (snap.exists) applyRemoteSketch(snap.data()); else setStamp(); },
+    (e) => banner("Live updates to the sketch stopped (" + (e && e.code || "error") + "). Reload to resume."));
+  db.doc("model/status").onSnapshot((snap) => { if (snap.exists) { S.status = statusFromDoc(snap.data()); renderStatus(); } }, () => {});
+  db.doc("model/progress").onSnapshot((snap) => { if (snap.exists) { const md = String(snap.data().md || ""); if (md !== S.progress) { S.progress = md; renderProgress(); } } }, () => {});
+})();
+</script>
+
+</body></html>

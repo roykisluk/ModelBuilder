@@ -1,0 +1,5 @@
+{
+  "name": "model-builder",
+  "description": "A skill that tutors you through building a macroeconomic model, with a companion claude.ai page",
+  "license": "MIT"
+}
